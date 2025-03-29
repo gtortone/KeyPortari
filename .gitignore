@@ -1,2 +1,6 @@
 /bB-test-ROM/bin
+/bB-test-ROM/includes.bB
+/bB-test-ROM/bB.asm
+/bB-test-ROM/2600basic_variable_redefs.h
+/bB-test-ROM/24CharTest.bas.asm
 /pcb/Keyboard-2600/Keyboard-2600-backups
