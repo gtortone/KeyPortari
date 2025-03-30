@@ -260,16 +260,29 @@ EndKernel
   ; Set Timer for Overscan
   ldy #35
   sty TIM64T
+  jmp checkInput
+moveCursor
 end
+
+   w000[ActiveChar] = 4
+   if joy0up then ActiveChar = ActiveChar - 25
+   if joy0down then ActiveChar = ActiveChar + 23
+   if joy0left then ActiveChar = ActiveChar - 1 else ActiveChar = ActiveChar + 1
 
 ; Char select code
    asm
+   jmp blinkCursor
+checkInput
    lda SWCHA
    cmp #$ff
    beq skipNewChar            ; No key pressed
    cmp last_char
-   beq skipNewChar            ; Key not released yet
+   beq skipNewChar            ; Key/Joystick not released yet
    sta last_char
+   and #$0f
+   cmp #$0f
+   beq moveCursor             ; Joystick/Arrow Keys usage -> move cursor
+   lda last_char
    ldx ActiveChar
    cmp #2
    beq backspaceKeyPressed    ; Backspace key pressed
