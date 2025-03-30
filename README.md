@@ -17,7 +17,8 @@ This project enables the connection of a PS/2 keyboard (or a USB keyboard that s
 - **Joystick port connection for the Atari 2600**
 
 ## Circuit Diagram
-*(Add diagram or description here)*
+![Breadboard Setup with one joystick forwarded](https://github.com/Al-Nafuur/Keyboard-2600/blob/main/docs/Breadboard_v1.png)
+
 
 ## Installation & Setup
 1. **Upload code to ATmega328P** (via Arduino IDE or AVRDUDE).
