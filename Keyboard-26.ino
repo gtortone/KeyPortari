@@ -8,92 +8,42 @@ todo:
 */
 
 #include "PS2Keymaps.h"
-
-#define DEBUG        0
-
-// Arduino Pins
-#define CLOCK              9 // USB D-
-#define DATA               8 // USB D+
-#define LED_AND_OE        13
-#define DIP_A_PIN         A0
-
-// Flags for keyboard_state
-#define MODIFIER        0x01
-#define SHIFT           0x02
-#define ALTGR           0x04
-
-// 24 Char display 'special' key values
-#define BACKSPACE_24CHAR   2
-#define ENTER_24CHAR       3
-
-#define LEFT_JOYSTICK_UP          0b11101111
-#define LEFT_JOYSTICK_DOWN        0b11011111
-#define LEFT_JOYSTICK_LEFT        0b10111111
-#define LEFT_JOYSTICK_RIGHT       0b01111111
-
-
-uint8_t getChar24Id(char c) {
-  uint8_t o = (uint8_t)c;
-
-  // Upper case chars (A-Z)
-  if(o > 64 && o < 91) {
-    return (o - 63) * 4;  // e.g. 'A' (65) -> (65 - 63) * 4 = 8
-  }
-  // Lower case chars (a-z)
-  if(o > 96 && o < 123) {
-    return (o - 69) * 4;  // e.g. 'a' (97) -> (97 - 69) * 4 = 112
-  }
-  // Digits (0-9)
-  if(o > 47 && o < 58) {
-    return (o + 6) * 4;   // e.g. '0' (48) -> (48 + 6) * 4 = 216
-  }
-  // Other
-  switch(o) {
-    case 46:  // Dot
-      return 1;
-    case 44:  // Comma
-      return 0;
-    case PS2_UPARROW:
-      return LEFT_JOYSTICK_UP;
-    case PS2_LEFTARROW:
-      return LEFT_JOYSTICK_LEFT;
-    case PS2_DOWNARROW:
-      return LEFT_JOYSTICK_DOWN;
-    case PS2_RIGHTARROW:
-      return LEFT_JOYSTICK_RIGHT;
-    case PS2_BACKSPACE: // or PS2_DELETE
-      return BACKSPACE_24CHAR;
-    case PS2_ENTER:
-      return ENTER_24CHAR;
-    default:
-      return 4; // Default is Space
-  }
-}
-
-void set_port_input(){
-  // set port on RIOT bus to input
-  DDRD = 0b00000000;
-  PORTD = 0b00000000; // floating, no pullups
-}
-
-void set_port_output(char value){
-  // Key down for 
-  // 1. set SN74LVC245AN to OE off !
-  // 2. set data Port to output
-  // 3. set data Port to keyvalue
-  digitalWrite(LED_AND_OE, HIGH);
-  #if DEBUG
-  Serial.print(value);
-  Serial.println(" down");
-  #else
-  DDRD = 0b11111111;
-  // todo mapping/protocol specific
-  PORTD = getChar24Id(value);
-  #endif
-}
+#include "global.h"
+#include "src/protocols/parallel_both_24char.h"
 
 uint8_t dipConfig;
 PS2Keymap_t *keymap;
+
+enum InitState {
+  INIT_IDLE,
+  INIT_WAIT_FOR_FFFF,
+  INIT_WAIT_FOR_ZERO_AGAIN,
+  INIT_WAIT_FOR_PROTOCOL
+};
+
+void (*key_down[])(char) = {
+  protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown,
+  protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown,
+  protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown,
+  protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown
+};
+
+void (*key_up[])() = {
+  protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp,
+  protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp,
+  protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp,
+  protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp
+};
+
+void set_right_nibble(char value){
+  // this might be moved to a protocol later
+  // 1. set right SN74HC4066 to OE off !
+  // 2. set right data port to output
+  // 3. set right data port to keyvalue
+  digitalWrite(OE_RIGHT_PORT, LOW);
+  DDRD = 0b00001111;
+  PORTD = value & 0x0F;
+}
 
 void setup() {
   #if DEBUG
@@ -102,8 +52,10 @@ void setup() {
 
   pinMode(CLOCK, INPUT_PULLUP); // For most keyboards the builtin pullups are sufficient, so the 10k pullups can be omitted
   pinMode(DATA, INPUT_PULLUP);
-  pinMode(LED_AND_OE, OUTPUT);
-  digitalWrite(LED_AND_OE, LOW); // Activate joystick forwarding via transceiver (e.g. SN74LVC245AN)
+  pinMode(OE_LEFT_PORT, OUTPUT);
+  pinMode(OE_RIGHT_PORT, OUTPUT);
+  digitalWrite(OE_LEFT_PORT, HIGH);  // Activate left joystick forwarding via first 74HC4066
+  digitalWrite(OE_RIGHT_PORT, HIGH); // Activate right joystick forwarding via second 74HC4066
 
   bitSet(PCICR, PCIE0);   // Enable pin change interrupts on pin B0-B7
   bitSet(PCMSK0, PCINT1); // Pin change interrupt on Clock pin (PCINT1 = PB1 Arduino Pin 9)
@@ -145,97 +97,109 @@ uint8_t lastscan = 0;
 
 void loop() {
  	static uint8_t keyboard_state = 0;
-  int init_step = 0;
-  bool init_done = true;
-  unsigned long init_timer = 0;
-  uint8_t busConfig = 0;
-  char c;
-/*
-  if(init_step == 0 && (PORTD & 0x0F) == 0){
-    init_step++;
-    init_timer = millis();
-  }else if(init_step == 1 && (PORTD & 0x0F) == 0b1111){
-    init_step++;
-  }else if(init_step == 2 && (PORTD & 0x0F) == 0){
-    init_step++;
-  }else if(init_step == 3 && (PORTD & 0x0F) != 0){
-    uint8_t busConfig = (PORTD & 0x0F);
-    init_step++;
-    delay(20); // 16.6667 one 60 Hz frame
-    set_port_output(busConfig); // return busConfig for confirmation on the bus
-    delay(20); // 16.6667 one 60 Hz frame
-    init_done = true;
-  }
-*/
-  if(init_done){
-    if(key_action){
-      key_action = false;
-      if(curscan != 0xF0 && curscan != 0xE0){
- 				if (curscan < PS2_KEYMAP_SIZE){
-          if (keyboard_state & SHIFT) {
-            c = pgm_read_byte(keymap->shift + curscan);
-          } else if ((keyboard_state & ALTGR) && keymap->uses_altgr) {
-            c = pgm_read_byte(keymap->altgr + curscan);
-          } else {
-            c = pgm_read_byte(keymap->noshift + curscan);
-          }
-        }
+  static InitState initState = INIT_IDLE;
+  static uint8_t activeProtocol = 0;
+  static unsigned long initTimer = 0;
 
-        if(lastscan == 0xF0){
-          if (curscan == 0x12 || curscan == 0x59) {
-            keyboard_state &= ~SHIFT;
-          } else if (curscan == 0x11 && (keyboard_state & MODIFIER)) {
-            keyboard_state &= ~ALTGR;
-          } else {
-            // Key up
-            // 1. set data Port to input
-            // 2. set SN74LVC245AN to OE on !
-            digitalWrite(LED_AND_OE, LOW);
-            #if DEBUG
-            Serial.print(c);
-            Serial.println(" up");
-            #else
-            // Call Key up of Protocol here!
-            set_port_input();
-            #endif
-          }
-          // CTRL, ALT & WIN keys could be added
-          // but is that really worth the overhead?
-          keyboard_state &= ~MODIFIER;
-        }else{
-          if (curscan == 0x12 || curscan == 0x59) {
-            keyboard_state |= SHIFT;
-          } else if (curscan == 0x11 && (keyboard_state & MODIFIER)) {
-            keyboard_state |= ALTGR;
-          } else {
-            if(lastscan == 0xE0){ // MODIFIER
-              switch (curscan) {
-                case 0x70: c = PS2_INSERT;      break;
-                case 0x6C: c = PS2_HOME;        break;
-                case 0x7D: c = PS2_PAGEUP;      break;
-                case 0x71: c = PS2_DELETE;      break;
-                case 0x69: c = PS2_END;         break;
-                case 0x7A: c = PS2_PAGEDOWN;    break;
-                case 0x75: c = PS2_UPARROW;     break;
-                case 0x6B: c = PS2_LEFTARROW;   break;
-                case 0x72: c = PS2_DOWNARROW;   break;
-                case 0x74: c = PS2_RIGHTARROW;  break;
-                case 0x4A: c = '/';             break;
-                case 0x5A: c = PS2_ENTER;       break;
-                default: break;
-              }
-            }
-            // Call key-down of active protocol here!
-            set_port_output(c);
-          }
-    			keyboard_state &= ~MODIFIER;
+  char c;
+
+  if(key_action){
+    key_action = false;
+    if(curscan != 0xF0 && curscan != 0xE0){
+      if (curscan < PS2_KEYMAP_SIZE){
+        if (keyboard_state & SHIFT) {
+          c = pgm_read_byte(keymap->shift + curscan);
+        } else if ((keyboard_state & ALTGR) && keymap->uses_altgr) {
+          c = pgm_read_byte(keymap->altgr + curscan);
+        } else {
+          c = pgm_read_byte(keymap->noshift + curscan);
         }
       }
-      lastscan = curscan;
+
+      if(lastscan == 0xF0){
+        if (curscan == 0x12 || curscan == 0x59) {
+          keyboard_state &= ~SHIFT;
+        } else if (curscan == 0x11 && (keyboard_state & MODIFIER)) {
+          keyboard_state &= ~ALTGR;
+        } else {
+          // Key up
+          #if DEBUG
+          Serial.print(c);
+          Serial.println(" up");
+          #else
+          key_up[activeProtocol]();
+          #endif
+        }
+        // CTRL, ALT & WIN keys could be added
+        // but is that really worth the overhead?
+        keyboard_state &= ~MODIFIER;
+      }else{
+        if (curscan == 0x12 || curscan == 0x59) {
+          keyboard_state |= SHIFT;
+        } else if (curscan == 0x11 && (keyboard_state & MODIFIER)) {
+          keyboard_state |= ALTGR;
+        } else {
+          if(lastscan == 0xE0){ // MODIFIER
+            switch (curscan) {
+              case 0x70: c = PS2_INSERT;      break;
+              case 0x6C: c = PS2_HOME;        break;
+              case 0x7D: c = PS2_PAGEUP;      break;
+              case 0x71: c = PS2_DELETE;      break;
+              case 0x69: c = PS2_END;         break;
+              case 0x7A: c = PS2_PAGEDOWN;    break;
+              case 0x75: c = PS2_UPARROW;     break;
+              case 0x6B: c = PS2_LEFTARROW;   break;
+              case 0x72: c = PS2_DOWNARROW;   break;
+              case 0x74: c = PS2_RIGHTARROW;  break;
+              case 0x4A: c = '/';             break;
+              case 0x5A: c = PS2_ENTER;       break;
+              default: break;
+            }
+          }
+          key_down[activeProtocol](c);
+        }
+        keyboard_state &= ~MODIFIER;
+      }
+    }
+    lastscan = curscan;
+  }else{
+    uint8_t busState = PIND & 0x0F;
+    switch (initState) {
+      case INIT_IDLE:
+        if (busState == 0) {
+          initState = initState + 1;
+          initTimer = millis();
+        }
+        break;
+
+      case INIT_WAIT_FOR_FFFF:
+        if (busState == 0b1111) {
+          initState = initState + 1;
+        }
+        break;
+
+      case INIT_WAIT_FOR_ZERO_AGAIN:
+        if (busState == 0) {
+          initState = initState + 1;
+        }
+        break;
+
+      case INIT_WAIT_FOR_PROTOCOL:
+        if (busState != 0) {
+          activeProtocol = busState;
+          initState = INIT_IDLE;
+
+          delay(17);                        // wait one 60Hz-Frame
+          set_right_nibble(activeProtocol); // return activeProtocol for confirmation on the bus
+          delay(34);                        // wait two more frames
+          protocol_parallel_both_24char_keyUp();
+        }
+        break;
     }
 
-  }else  if( (init_timer - millis()) > 1000){ // init prozess takes too long! -> reseting
-    init_step = 0;
+    // Timeout protection
+    if (initState != INIT_IDLE && (millis() - initTimer > 1000)) {
+      initState = INIT_IDLE;
+    }
   }
-
 }
