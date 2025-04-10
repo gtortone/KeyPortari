@@ -11,13 +11,13 @@ This project enables the connection of a PS/2 keyboard (or a USB keyboard that s
 
 ## Hardware Requirements
 - **ATmega328P 5V 16Mhz (Arduino-compatible)**
-- **PS/2 Keyboard**
+- **PS/2 Keyboard (or USB Keyboard that supports the PS/2 protocol)**
 - **Resistors for Resistor-Ladder (10kΩ, 20kΩ, 40kΩ, 80kΩ, 100kΩ Pull-up)**
-- **8-bit bus transceiver (SN74LVC245AN)**
+- **Quad analog switch (74HC4066)**
 - **Joystick port connection for the Atari 2600**
 
 ## Circuit Diagram
-![Breadboard Setup with one joystick forwarded](https://github.com/Al-Nafuur/Keyboard-2600/blob/main/docs/Breadboard_v2.png)
+![Breadboard Setup with one joystick forwarded](https://github.com/Al-Nafuur/Keyboard-2600/blob/main/docs/Breadboard_v3.png)
 
 
 ## Installation & Setup
