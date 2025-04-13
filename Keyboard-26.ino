@@ -9,7 +9,9 @@ todo:
 
 #include "PS2Keymaps.h"
 #include "global.h"
+#include "src/protocols/disabled_both_none.h"
 #include "src/protocols/parallel_both_24char.h"
+
 
 uint8_t dipConfig;
 PS2Keymap_t *keymap;
@@ -22,14 +24,14 @@ enum InitState {
 };
 
 void (*key_down[])(char) = {
-  protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown,
+  protocol_disabled_both_none_keyDown,   protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown,
   protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown,
   protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown,
   protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown
 };
 
 void (*key_up[])() = {
-  protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp,
+  protocol_disabled_both_none_keyUp,   protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp,
   protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp,
   protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp,
   protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp
@@ -98,7 +100,7 @@ uint8_t lastscan = 0;
 void loop() {
  	static uint8_t keyboard_state = 0;
   static InitState initState = INIT_IDLE;
-  static uint8_t activeProtocol = 0;
+  static uint8_t activeProtocol = 1;
   static unsigned long initTimer = 0;
 
   char c;
