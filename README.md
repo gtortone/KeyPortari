@@ -1,4 +1,4 @@
-# Atari 2600 Keyboard Interface (WIP)
+# The KeyPortari a 2600/7800 Keyboard Interface
 
 This project enables the connection of a PS/2 keyboard (or a USB keyboard that supports the PS/2 protocol) to the Atari 2600 or 7800 console. The ATmega328P processes keystrokes and controls the joystick inputs of the Atari 2600 accordingly.
 
