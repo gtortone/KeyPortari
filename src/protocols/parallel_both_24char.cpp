@@ -1,5 +1,8 @@
 #include "parallel_both_24char.h"
 
+void protocol_parallel_both_24char_setup(){
+}
+
 void protocol_parallel_both_24char_keyUp(){
   // set port on RIOT bus to input. Also used on init!
   DDRD = 0b00000000;
