@@ -11,10 +11,12 @@ todo:
 #include "global.h"
 #include "src/protocols/disabled_both_none.h"
 #include "src/protocols/parallel_both_24char.h"
+#include "src/protocols/parallel_both_BasicProgramming.h"
+#include "src/protocols/parallel_both_CompuMate.h"
 
 
-uint8_t dipConfig;
 PS2Keymap_t *keymap;
+uint8_t activeProtocol;
 
 enum InitState {
   INIT_IDLE,
@@ -23,15 +25,22 @@ enum InitState {
   INIT_WAIT_FOR_PROTOCOL
 };
 
+void (*protocol_setup[])() = {
+  protocol_disabled_both_none_setup,   protocol_parallel_both_24char_setup, protocol_parallel_both_BasicProgramming_setup, protocol_parallel_both_CompuMate_setup,
+  protocol_parallel_both_24char_setup, protocol_parallel_both_24char_setup, protocol_parallel_both_24char_setup, protocol_parallel_both_24char_setup,
+  protocol_parallel_both_24char_setup, protocol_parallel_both_24char_setup, protocol_parallel_both_24char_setup, protocol_parallel_both_24char_setup,
+  protocol_parallel_both_24char_setup, protocol_parallel_both_24char_setup, protocol_parallel_both_24char_setup, protocol_parallel_both_24char_setup
+};
+
 void (*key_down[])(char) = {
-  protocol_disabled_both_none_keyDown,   protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown,
+  protocol_disabled_both_none_keyDown,   protocol_parallel_both_24char_keyDown, protocol_parallel_both_BasicProgramming_keyDown, protocol_parallel_both_CompuMate_keyDown,
   protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown,
   protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown,
   protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown, protocol_parallel_both_24char_keyDown
 };
 
 void (*key_up[])() = {
-  protocol_disabled_both_none_keyUp,   protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp,
+  protocol_disabled_both_none_keyUp,   protocol_parallel_both_24char_keyUp, protocol_parallel_both_BasicProgramming_keyUp, protocol_parallel_both_CompuMate_keyUp,
   protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp,
   protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp,
   protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp, protocol_parallel_both_24char_keyUp
@@ -48,6 +57,8 @@ void set_right_nibble(char value){
 }
 
 void setup() {
+  uint8_t dipConfig;
+
   #if DEBUG
   Serial.begin(115200);
   #endif
@@ -63,7 +74,7 @@ void setup() {
   bitSet(PCMSK0, PCINT1); // Pin change interrupt on Clock pin (PCINT1 = PB1 Arduino Pin 9)
 
   int adcValue = analogRead(DIP_A_PIN);      // Read voltage of DIP-Switch block resistor ladder (0-1023)
-  dipConfig = map(adcValue, 0, 1023, 15, 0); // Get binary value of DIP-Switch Block (0-15) 
+  dipConfig = 1; // map(adcValue, 0, 1023, 15, 0); // Get binary value of DIP-Switch Block (0-15) 
  
   switch (dipConfig & 0b11) { // lower 2 bits of dipConfig define keyboard layout
     case 0b01: keymap = &PS2Keymap_German;      break;
@@ -71,14 +82,18 @@ void setup() {
     default: keymap = &PS2Keymap_US;            break;
   }
 
+  activeProtocol = 3; // (dipConfig >> 2) & 0b11;
+
   #if DEBUG
   Serial.println("Keyboard test");
   Serial.println(dipConfig);
+  #else
+  protocol_setup[activeProtocol]();
   #endif
 }
 
-uint8_t curscan = 0;
-bool key_action = false;
+volatile uint8_t curscan = 0;
+volatile bool keyboard_action = false;
 
 ISR(PCINT0_vect) {
   uint16_t newscan = 0;
@@ -89,24 +104,20 @@ ISR(PCINT0_vect) {
   }
   newscan >>= 1;
   newscan &= 0xFF;
-  key_action = true;
-
   curscan = newscan;
+  keyboard_action = true;
   bitSet(PCIFR, PCIF0);
 }
 
-uint8_t lastscan = 0;
-
 void loop() {
- 	static uint8_t keyboard_state = 0;
+ 	static uint8_t keyboard_state = 0, lastscan = 0;
   static InitState initState = INIT_IDLE;
-  static uint8_t activeProtocol = 1;
   static unsigned long initTimer = 0;
 
   char c;
 
-  if(key_action){
-    key_action = false;
+  if(keyboard_action){
+    keyboard_action = false;
     if(curscan != 0xF0 && curscan != 0xE0){
       if (curscan < PS2_KEYMAP_SIZE){
         if (keyboard_state & SHIFT) {
@@ -126,7 +137,7 @@ void loop() {
         } else {
           // Key up
           #if DEBUG
-          Serial.print(c);
+          Serial.print((int)c);
           Serial.println(" up");
           #else
           key_up[activeProtocol]();
@@ -158,13 +169,19 @@ void loop() {
               default: break;
             }
           }
+          #if DEBUG
+          Serial.print((int)c);
+          Serial.println(" down");
+          #else
           key_down[activeProtocol](c);
+          #endif
         }
         keyboard_state &= ~MODIFIER;
       }
     }
     lastscan = curscan;
   }else{
+/* // todo check active protocol is "soft" switchable
     uint8_t busState = PIND & 0x0F;
     switch (initState) {
       case INIT_IDLE:
@@ -203,5 +220,6 @@ void loop() {
     if (initState != INIT_IDLE && (millis() - initTimer > 1000)) {
       initState = INIT_IDLE;
     }
+*/
   }
 }
