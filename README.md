@@ -38,8 +38,8 @@ This project enables the connection of a PS/2 keyboard (or a USB keyboard that s
 - Open-source libraries: PS/2 Keyboard Library (modified for this project)
 
 ## License
-This projects software is licensed under the **MIT License** – free to use and modify.
-This projects hardware is licensed under the **CERN Open Hardware Licence Version 2 - Permissive**.
+- Firmware is licensed under the [MIT License](LICENSE)
+- Hardware designs (schematics, PCB) are under the [CERN Open Hardware Licence v2.0 - Permissive](LICENSE-HARDWARE)
 
 ---
 If you have any questions or suggestions, feel free to open an issue on GitHub! 🎮
