@@ -25,6 +25,20 @@ enum InitState {
   INIT_WAIT_FOR_PROTOCOL
 };
 
+typedef struct {
+  int adc_threshold;
+  int id;
+} AdcMapping;
+
+const AdcMapping adc_mappings[] PROGMEM = {
+  {  52, 15}, { 55,  7}, { 59, 11},
+  {  64,  3}, { 70, 13}, { 77,  5},
+  {  86,  9}, { 97,  1}, {111, 14},
+  { 129,  6}, {154, 10}, {192,  2},
+  { 253, 12}, {373,  4}, {739,  8},
+  {1024, 0}
+};
+
 void (*protocol_setup[])() = {
   protocol_disabled_both_none_setup,   protocol_parallel_both_24char_setup, protocol_parallel_both_BasicProgramming_setup, protocol_parallel_both_CompuMate_setup,
   protocol_parallel_both_24char_setup, protocol_parallel_both_24char_setup, protocol_parallel_both_24char_setup, protocol_parallel_both_24char_setup,
@@ -56,8 +70,15 @@ void set_right_nibble(char value){
   PORTD = value & 0x0F;
 }
 
+int map_adc_value(int adc_value) {
+  int i = 0;
+  while (i < 16 && adc_mappings[i].adc_threshold < adc_value ) {
+      i++;
+  }
+  return adc_mappings[i].id; 
+}
+
 void setup() {
-  uint8_t dipConfig;
 
   #if DEBUG
   Serial.begin(115200);
@@ -73,19 +94,20 @@ void setup() {
   bitSet(PCICR, PCIE0);   // Enable pin change interrupts on pin B0-B7
   bitSet(PCMSK0, PCINT1); // Pin change interrupt on Clock pin (PCINT1 = PB1 Arduino Pin 9)
 
-  int adcValue = analogRead(DIP_A_PIN);      // Read voltage of DIP-Switch block resistor ladder (0-1023)
-  dipConfig = 1; // map(adcValue, 0, 1023, 15, 0); // Get binary value of DIP-Switch Block (0-15) 
- 
+  int adcValue = analogRead(DIP_A_PIN);  // Read voltage of DIP-Switch block resistor ladder (0-1023)
+  uint8_t dipConfig = map_adc_value(adcValue); 
+
   switch (dipConfig & 0b11) { // lower 2 bits of dipConfig define keyboard layout
     case 0b01: keymap = &PS2Keymap_German;      break;
     case 0b10: keymap = &PS2Keymap_French;      break;
     default: keymap = &PS2Keymap_US;            break;
   }
 
-  activeProtocol = 3; // (dipConfig >> 2) & 0b11;
+  activeProtocol = (dipConfig >> 2) & 0b11;
 
   #if DEBUG
   Serial.println("Keyboard test");
+  Serial.println(adcValue);
   Serial.println(dipConfig);
   #else
   protocol_setup[activeProtocol]();
