@@ -27,7 +27,7 @@ enum InitState {
 
 typedef struct {
   int adc_threshold;
-  int id;
+  uint8_t id;
 } AdcMapping;
 
 const AdcMapping adc_mappings[] PROGMEM = {
@@ -70,12 +70,12 @@ void set_right_nibble(char value){
   PORTD = value & 0x0F;
 }
 
-int map_adc_value(int adc_value) {
+uint8_t map_adc_value(int adc_value) {
   int i = 0;
-  while (i < 16 && adc_mappings[i].adc_threshold < adc_value ) {
+  while (i < 16 && pgm_read_word(&adc_mappings[i].adc_threshold) < adc_value ) {
       i++;
   }
-  return adc_mappings[i].id; 
+  return pgm_read_byte(&adc_mappings[i].id); 
 }
 
 void setup() {
@@ -88,8 +88,9 @@ void setup() {
   pinMode(DATA, INPUT_PULLUP);
   pinMode(OE_LEFT_PORT, OUTPUT);
   pinMode(OE_RIGHT_PORT, OUTPUT);
-  digitalWrite(OE_LEFT_PORT, HIGH);  // Activate left joystick forwarding via first 74HC4066
-  digitalWrite(OE_RIGHT_PORT, HIGH); // Activate right joystick forwarding via second 74HC4066
+  // Disable joystick forwarding via both 74HC4066 (protocol setup may enable it later)
+  digitalWrite(OE_LEFT_PORT, LOW);
+  digitalWrite(OE_RIGHT_PORT, LOW);
 
   bitSet(PCICR, PCIE0);   // Enable pin change interrupts on pin B0-B7
   bitSet(PCMSK0, PCINT1); // Pin change interrupt on Clock pin (PCINT1 = PB1 Arduino Pin 9)
