@@ -30,8 +30,8 @@ volatile uint8_t my_4017_counter;
 
 void protocol_parallel_both_CompuMate_setup(){
   // disable joystick port forwarding
-//  digitalWrite(OE_LEFT_PORT, LOW);
-//  digitalWrite(OE_RIGHT_PORT, LOW);
+  digitalWrite(OE_LEFT_PORT, LOW);
+  digitalWrite(OE_RIGHT_PORT, LOW);
 
   // set port on RIOT bus to input/output.
   DDRD = 0b00001100;

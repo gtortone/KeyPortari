@@ -42,8 +42,8 @@ void SwitchColor() {
 
 void protocol_parallel_both_BasicProgramming_setup(){
   // disable joystick port forwarding
-//  digitalWrite(OE_LEFT_PORT, LOW);
-//  digitalWrite(OE_RIGHT_PORT, LOW);
+  digitalWrite(OE_LEFT_PORT, LOW);
+  digitalWrite(OE_RIGHT_PORT, LOW);
 
   // set port on RIOT bus to input.
   DDRD = 0b00000000;
