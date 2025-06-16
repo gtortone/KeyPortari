@@ -3,7 +3,7 @@
  * https://github.com/SteveGuidi/video-companion-media/tree/main/2021.06.09%20-%20Atari%202600%20Keyboard
 */
 
-#include "parallel_both_BasicProgramming.h"
+#include "protocols/parallel_both_BasicProgramming.h"
 
 KeyColor _currentColor;
 

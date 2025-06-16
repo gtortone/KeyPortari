@@ -9,13 +9,13 @@ todo:
 
 #include "PS2Keymaps.h"
 #include "global.h"
-#include "src/protocols/disabled_both_none.h"
-#include "src/protocols/parallel_both_24char.h"
-#include "src/protocols/parallel_both_BasicProgramming.h"
-#include "src/protocols/parallel_both_CompuMate.h"
+#include "protocols/disabled_both_none.h"
+#include "protocols/parallel_both_24char.h"
+#include "protocols/parallel_both_BasicProgramming.h"
+#include "protocols/parallel_both_CompuMate.h"
 
 
-PS2Keymap_t *keymap;
+const PS2Keymap_t *keymap;
 uint8_t activeProtocol;
 
 enum InitState {
@@ -72,7 +72,7 @@ void set_right_nibble(char value){
 
 uint8_t map_adc_value(int adc_value) {
   int i = 0;
-  while (i < 16 && pgm_read_word(&adc_mappings[i].adc_threshold) < adc_value ) {
+  while (i < 16 && (int) (pgm_read_word(&adc_mappings[i].adc_threshold)) < adc_value ) {
       i++;
   }
   return pgm_read_byte(&adc_mappings[i].id); 
@@ -134,8 +134,8 @@ ISR(PCINT0_vect) {
 
 void loop() {
  	static uint8_t keyboard_state = 0, lastscan = 0;
-  static InitState initState = INIT_IDLE;
-  static unsigned long initTimer = 0;
+  //static InitState initState = INIT_IDLE;
+  //static unsigned long initTimer = 0;
 
   char c;
 

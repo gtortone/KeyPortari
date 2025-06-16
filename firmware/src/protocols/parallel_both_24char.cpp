@@ -1,4 +1,4 @@
-#include "parallel_both_24char.h"
+#include "protocols/parallel_both_24char.h"
 
 void protocol_parallel_both_24char_setup(){
   digitalWrite(OE_LEFT_PORT, HIGH);  // Activate left joystick forwarding via first 74HC4066

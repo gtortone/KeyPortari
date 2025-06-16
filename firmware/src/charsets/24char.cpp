@@ -1,4 +1,4 @@
-#include "24char.h"
+#include "charsets/24char.h"
 
 uint8_t getChar24Id(char c) {
   uint8_t o = (uint8_t)c;

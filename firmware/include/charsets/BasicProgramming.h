@@ -5,8 +5,8 @@
 
 #pragma once
 
-#include "../../PS2Keymaps.h"
-#include "../../global.h"
+#include "PS2Keymaps.h"
+#include "global.h"
 #include <Arduino.h>
 
 // Basic Programming 'special' key values

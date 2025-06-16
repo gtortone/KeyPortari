@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../PS2Keymaps.h"
-#include "../../global.h"
+#include "PS2Keymaps.h"
+#include "global.h"
 #include <Arduino.h>
 
 // CompuMate 'special' key values (uses the same as Basic Programming)

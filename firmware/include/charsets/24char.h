@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../PS2Keymaps.h"
-#include "../../global.h"
+#include "PS2Keymaps.h"
+#include "global.h"
 
 // 24 Char display 'special' key values
 #define BACKSPACE_24CHAR   2

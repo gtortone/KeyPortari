@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include "../../global.h"
+#include "global.h"
 #include "../charsets/BasicProgramming.h"
 
 void protocol_parallel_both_BasicProgramming_setup();

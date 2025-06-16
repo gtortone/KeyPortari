@@ -20,7 +20,7 @@
     INPT5: D7 = keyboard row 2 input (0 = key pressed)
 */
 
-#include "parallel_both_CompuMate.h"
+#include "protocols/parallel_both_CompuMate.h"
 
 #define RAM _BV(PD4)
 #define RST _BV(PD5)
